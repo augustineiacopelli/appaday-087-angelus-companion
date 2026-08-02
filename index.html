@@ -194,6 +194,20 @@
     font-size:.94rem; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.06);
   }
 
+  /* Voice (leader parts) */
+  .speak-btn{
+    display:none; align-items:center; justify-content:center;
+    width:30px; height:30px; flex:0 0 auto; margin-left:8px; vertical-align:middle;
+    border:1px solid var(--gold-dim); border-radius:50%;
+    background:transparent; color:var(--gold); cursor:pointer; transition:.2s; padding:0;
+  }
+  body.voice-on .speak-btn{display:inline-flex;}
+  .speak-btn:hover{border-color:var(--gold); background:rgba(215,180,91,.12);}
+  .speak-btn.speaking{border-color:var(--gold); background:rgba(215,180,91,.16); box-shadow:0 0 10px var(--gold-dim);}
+  .speak-btn svg{width:15px; height:15px;}
+  .lead-hint{display:none; font-style:italic; color:var(--faint); font-size:.82rem; margin-top:8px; text-align:center;}
+  body.voice-on .lead-hint{display:block;}
+
   /* Settings */
   details.settings{
     background:var(--card); border:1px solid var(--line); border-radius:14px; padding:2px 4px;
@@ -324,6 +338,12 @@
           </div>
           <label class="sw"><input type="checkbox" id="pealToggle" checked><span class="track"></span><span class="knob"></span></label>
         </div>
+        <div class="set-row" id="voiceRow">
+          <div class="label">Spoken leader parts
+            <span class="hint">The app reads the versicles and collect aloud; you make the responses.</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="voiceToggle"><span class="track"></span><span class="knob"></span></label>
+        </div>
         <div class="set-row">
           <div class="label">Prayer form
             <span class="hint">Auto follows the season: Regina Caeli in Eastertide.</span>
@@ -357,6 +377,8 @@
   "use strict";
 
   var HAILMARY = "Hail Mary, full of grace, the Lord is with thee; blessed art thou amongst women, and blessed is the fruit of thy womb, Jesus. Holy Mary, Mother of God, pray for us sinners, now and at the hour of our death. Amen.";
+  var HM_LEADER = HAILMARY.split("Holy Mary")[0].replace(/\s+$/, "");
+  var INTRO_TEXT = "In the name of the Father, and of the Son, and of the Holy Spirit. Amen.";
 
   var PRAYERS = {
     angelus: {
@@ -385,13 +407,14 @@
   var TIMES = [6, 12, 18];
   var TIME_NAMES = {6:"6 AM", 12:"Noon", 18:"6 PM"};
 
-  var DEFAULTS = { remOn:false, times:{h6:true,h12:true,h18:true}, fullPeal:true, form:"auto" };
+  var DEFAULTS = { remOn:false, times:{h6:true,h12:true,h18:true}, fullPeal:true, form:"auto", voiceOn:false };
   var settings = loadSettings();
 
   var el = {};
   ["nextLabel","nextIn","chimeDot","chimeState","seasonNote","formKicker","formLatin",
    "mGuided","mFull","guided","fullText","stepArea","dots","prevBtn","nextBtn",
-   "remToggle","pealToggle","formSeg","testChime","bellBanner","bellTitle"].forEach(function(id){
+   "remToggle","pealToggle","formSeg","testChime","bellBanner","bellTitle",
+   "voiceToggle","voiceRow"].forEach(function(id){
     el[id] = document.getElementById(id);
   });
 
@@ -408,7 +431,8 @@
           remOn: !!s.remOn,
           times: { h6: s.times ? !!s.times.h6 : true, h12: s.times ? !!s.times.h12 : true, h18: s.times ? !!s.times.h18 : true },
           fullPeal: s.fullPeal !== false,
-          form: (s.form === "angelus" || s.form === "regina") ? s.form : "auto"
+          form: (s.form === "angelus" || s.form === "regina") ? s.form : "auto",
+          voiceOn: !!s.voiceOn
         };
       }
     }catch(e){}
@@ -484,20 +508,65 @@
   }
   function ringPeal(){ ringPattern(settings.fullPeal ? [3,3,3,9] : [3,0,0,0]); }
 
+  /* ---------- voice: the leader's parts (speech synthesis) ---------- */
+  var synth = ("speechSynthesis" in window) ? window.speechSynthesis : null;
+  var chosenVoice = null;
+  function loadVoices(){
+    if(!synth) return;
+    var list = synth.getVoices() || [];
+    if(!list.length) return;
+    var en = list.filter(function(v){ return /^en(-|_|$)/i.test(v.lang); });
+    var pool = en.length ? en : list;
+    var pref = pool.filter(function(v){ return /(Samantha|Daniel|Karen|Serena|Moira|Google US English|Google UK English)/i.test(v.name); });
+    chosenVoice = pref[0] || pool[0] || null;
+  }
+  var speakingBtn = null;
+  function speak(text, btn){
+    if(!synth || !settings.voiceOn || !text) return;
+    try{
+      if(synth.speaking || synth.pending){ synth.cancel(); }
+      var u = new SpeechSynthesisUtterance(text);
+      if(chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; }
+      else { u.lang = "en-US"; }
+      u.rate = 0.92; u.pitch = 1;
+      u.onstart = function(){ if(btn){ btn.classList.add("speaking"); speakingBtn = btn; } };
+      u.onend = function(){ if(btn){ btn.classList.remove("speaking"); } if(speakingBtn === btn){ speakingBtn = null; } };
+      u.onerror = function(){ if(btn){ btn.classList.remove("speaking"); } };
+      synth.speak(u);
+    }catch(e){}
+  }
+  function stopSpeech(){
+    try{ if(synth){ synth.cancel(); } }catch(e){}
+    if(speakingBtn){ speakingBtn.classList.remove("speaking"); speakingBtn = null; }
+  }
+  var SPKR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.6a4 4 0 0 1 0 6.8"/><path d="M18.5 6a7 7 0 0 1 0 12" opacity=".55"/></svg>';
+  function escAttr(s){ return esc(s).replace(/"/g, "&quot;"); }
+  function spk(text){
+    return '<button class="speak-btn" type="button" data-text="' + escAttr(text) + '" aria-label="Hear the leader\u2019s part">' + SPKR + '</button>';
+  }
+  function bindSpeakButtons(container){
+    var btns = container.querySelectorAll(".speak-btn");
+    Array.prototype.forEach.call(btns, function(b){
+      b.addEventListener("click", function(){ speak(b.getAttribute("data-text"), b); });
+    });
+  }
+
   /* ---------- guided rendering ---------- */
   function currentPrayer(){ return PRAYERS[activeKey()]; }
 
   function totalGuided(){ return currentPrayer().steps.length + 2; } // intro + steps + closing
 
-  function renderStep(){
+  function renderStep(autoSpeak){
     var p = currentPrayer();
     var n = totalGuided();
     var area = el.stepArea;
     var html = "";
+    var primary = null; // the leader line to auto-speak on entry
 
     if(idx === 0){
       html += '<div class="step-tag">To begin</div>';
-      html += '<div class="intro-line">In the name of the Father, and of the Son,<br>and of the Holy Spirit. Amen.</div>';
+      html += '<div class="intro-line">In the name of the Father, and of the Son,<br>and of the Holy Spirit. Amen.' + spk(INTRO_TEXT) + '</div>';
+      primary = INTRO_TEXT;
     } else if(idx === n - 1){
       html += '<div class="amen-wrap"><div class="big">Amen.</div>';
       html += '<p>The prayer is complete. May the Word made flesh dwell in your heart this day.</p></div>';
@@ -505,19 +574,24 @@
       var st = p.steps[idx - 1];
       html += '<div class="step-tag">' + esc(st.tag) + '</div>';
       if(st.collect){
-        html += '<div class="collect"><div class="lp">Let us pray</div><p>' + esc(st.text) + '</p></div>';
+        var collectSpoken = "Let us pray. " + st.text;
+        html += '<div class="collect"><div class="lp">Let us pray' + spk(collectSpoken) + '</div><p>' + esc(st.text) + '</p></div>';
+        primary = collectSpoken;
       } else {
         html += '<div class="vr">';
-        html += '<div class="line vers"><span class="mark">V.</span>' + esc(st.v) + '</div>';
+        html += '<div class="line vers"><span class="mark">V.</span>' + esc(st.v) + spk(st.v) + '</div>';
         html += '<div class="line resp"><span class="mark">R.</span>' + esc(st.r) + '</div>';
         html += '</div>';
         if(st.rubric){ html += '<div class="rubric">' + esc(st.rubric) + '</div>'; }
         if(st.hail){
-          html += '<div class="hail"><span class="lbl">Hail Mary</span><p>' + esc(HAILMARY) + '</p></div>';
+          html += '<div class="hail"><span class="lbl">Hail Mary' + spk(HM_LEADER) + '</span><p>' + esc(HAILMARY) + '</p>';
+          html += '<div class="lead-hint">The leader intones; make your response from "Holy Mary."</div></div>';
         }
+        primary = st.v;
       }
     }
     area.innerHTML = html;
+    bindSpeakButtons(area);
 
     // dots
     var dots = "";
@@ -532,24 +606,27 @@
     if(idx === 0){ el.nextBtn.textContent = "Begin"; }
     else if(idx === n - 1){ el.nextBtn.textContent = "Pray again"; }
     else { el.nextBtn.textContent = "Next"; }
+
+    if(autoSpeak && settings.voiceOn && primary){ speak(primary, null); }
   }
 
   function renderFull(){
     var p = currentPrayer();
     var html = "";
-    html += '<div class="fline" style="text-align:center; font-style:italic; color:var(--faint)">In the name of the Father, and of the Son, and of the Holy Spirit. Amen.</div>';
+    html += '<div class="fline" style="text-align:center; font-style:italic; color:var(--faint)">In the name of the Father, and of the Son, and of the Holy Spirit. Amen.' + spk(INTRO_TEXT) + '</div>';
     for(var i=0; i<p.steps.length; i++){
       var st = p.steps[i];
       if(st.collect){
-        html += '<div class="fcollect"><div class="flp">Let us pray</div>' + esc(st.text) + '</div>';
+        html += '<div class="fcollect"><div class="flp">Let us pray' + spk("Let us pray. " + st.text) + '</div>' + esc(st.text) + '</div>';
       } else {
-        html += '<div class="fline fvers"><span class="mark">V.</span>' + esc(st.v) + '</div>';
+        html += '<div class="fline fvers"><span class="mark">V.</span>' + esc(st.v) + spk(st.v) + '</div>';
         html += '<div class="fline"><span class="mark">R.</span>' + esc(st.r) + '</div>';
         if(st.rubric){ html += '<div class="frub">' + esc(st.rubric) + '</div>'; }
-        if(st.hail){ html += '<div class="fhail">' + esc(HAILMARY) + '</div>'; }
+        if(st.hail){ html += '<div class="fhail">' + esc(HAILMARY) + spk(HM_LEADER) + '</div>'; }
       }
     }
     el.fullText.innerHTML = html;
+    bindSpeakButtons(el.fullText);
   }
 
   function esc(s){
@@ -573,6 +650,7 @@
         : "Showing the Angelus.";
     }
     if(idx >= totalGuided()) idx = 0;
+    stopSpeech();
     renderStep();
     renderFull();
   }
@@ -645,6 +723,7 @@
   /* ---------- wire UI ---------- */
   function setMode(m){
     mode = m;
+    stopSpeech();
     if(m === "guided"){
       el.mGuided.classList.add("active"); el.mFull.classList.remove("active");
       el.guided.classList.remove("hide"); el.fullText.classList.remove("show");
@@ -661,10 +740,10 @@
     el.nextBtn.addEventListener("click", function(){
       var n = totalGuided();
       if(idx === n - 1){ idx = 0; } else { idx++; }
-      renderStep();
+      renderStep(true);
     });
     el.prevBtn.addEventListener("click", function(){
-      if(idx > 0){ idx--; renderStep(); }
+      if(idx > 0){ idx--; renderStep(true); }
     });
 
     el.remToggle.addEventListener("change", function(){
@@ -701,6 +780,15 @@
       unlockAudio();
       ringPattern([3, 0, 0, 0]);
     });
+
+    if(el.voiceToggle){
+      el.voiceToggle.addEventListener("change", function(){
+        settings.voiceOn = el.voiceToggle.checked;
+        document.body.classList.toggle("voice-on", settings.voiceOn);
+        if(!settings.voiceOn){ stopSpeech(); }
+        saveSettings();
+      });
+    }
   }
 
   function applySettingsToUI(){
@@ -715,9 +803,19 @@
     Array.prototype.forEach.call(fbtns, function(btn){
       btn.classList.toggle("on", btn.getAttribute("data-f") === settings.form);
     });
+    if(!synth){
+      settings.voiceOn = false;
+      if(el.voiceRow){ el.voiceRow.style.display = "none"; }
+    }
+    if(el.voiceToggle){ el.voiceToggle.checked = settings.voiceOn; }
+    document.body.classList.toggle("voice-on", settings.voiceOn);
   }
 
   function init(){
+    if(synth){
+      loadVoices();
+      try{ synth.onvoiceschanged = loadVoices; }catch(e){}
+    }
     bind();
     applySettingsToUI();
     refreshForm();
