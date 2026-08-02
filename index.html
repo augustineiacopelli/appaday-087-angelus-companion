@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Angelus Companion</title>
+<meta name="description" content="Pray the Angelus and Regina Caeli with the versicles and responses laid out, plus gentle chime reminders at 6 AM, noon, and 6 PM.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-a:#0b1e3f; --bg-b:#132b52; --bg-c:#081428;
+    --gold:#d7b45b; --gold-soft:#c39a3f; --gold-dim:rgba(215,180,91,.35);
+    --cream:#f3ead2; --muted:#adb9d6; --faint:rgba(243,234,210,.55);
+    --card:rgba(255,255,255,.045); --line:rgba(215,180,91,.28);
+    --serif:'EB Garamond', Georgia, 'Times New Roman', serif;
+    --display:'Cinzel', Georgia, serif;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    min-height:100dvh;
+    display:flex; flex-direction:column;
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(215,180,91,.10), transparent 60%),
+      linear-gradient(160deg, var(--bg-a) 0%, var(--bg-b) 48%, var(--bg-c) 100%);
+    background-attachment:fixed;
+    color:var(--cream);
+    font-family:var(--serif);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.5;
+  }
+  a{color:var(--gold);}
+  .wrap{
+    width:100%; max-width:720px; margin:0 auto;
+    padding:18px 20px 40px;
+    flex:1 1 auto; display:flex; flex-direction:column; gap:16px;
+  }
+
+  /* Header */
+  header{text-align:center; padding-top:8px;}
+  .crest{
+    width:46px; height:46px; margin:0 auto 8px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--gold);
+  }
+  h1{
+    font-family:var(--display); font-weight:600; letter-spacing:.08em;
+    font-size:clamp(1.4rem, 4.4vw, 2rem); color:var(--cream);
+  }
+  .subtitle{
+    font-style:italic; color:var(--faint); font-size:1.02rem; margin-top:2px;
+  }
+  .backlink{
+    display:inline-block; margin-top:10px; font-size:.82rem;
+    letter-spacing:.05em; color:var(--muted); text-decoration:none;
+    border-bottom:1px solid transparent;
+  }
+  .backlink:hover{border-bottom-color:var(--gold-dim);}
+
+  /* Status chip */
+  .status{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+    gap:10px 14px; text-align:center;
+  }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--card); border:1px solid var(--line);
+    border-radius:999px; padding:7px 15px; font-size:.92rem; color:var(--cream);
+  }
+  .chip b{color:var(--gold); font-family:var(--display); font-weight:500; letter-spacing:.03em;}
+  .chip .dot{width:7px; height:7px; border-radius:50%; background:var(--muted);}
+  .chip .dot.on{background:var(--gold); box-shadow:0 0 8px var(--gold);}
+
+  /* Season note */
+  .season{
+    text-align:center; font-style:italic; color:var(--faint); font-size:.95rem;
+  }
+
+  /* Prayer card */
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:22px 22px 24px;
+    box-shadow:0 18px 50px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .form-head{
+    text-align:center; margin-bottom:6px;
+  }
+  .form-head .kicker{
+    font-family:var(--display); letter-spacing:.22em; text-transform:uppercase;
+    font-size:.72rem; color:var(--gold-soft);
+  }
+  .form-head h2{
+    font-family:var(--display); font-weight:500; letter-spacing:.06em;
+    font-size:clamp(1.15rem,3.6vw,1.5rem); margin-top:3px;
+  }
+  .rule{
+    height:1px; margin:14px auto 4px; max-width:220px;
+    background:linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
+  /* Mode toggle */
+  .modes{
+    display:flex; gap:6px; justify-content:center; margin:12px auto 18px;
+    background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:999px;
+    padding:4px; width:fit-content;
+  }
+  .modes button{
+    font-family:var(--display); letter-spacing:.08em; font-size:.78rem;
+    text-transform:uppercase; color:var(--muted);
+    background:transparent; border:0; border-radius:999px;
+    padding:7px 16px; cursor:pointer; transition:.2s;
+  }
+  .modes button.active{ background:var(--gold); color:#20160a; }
+
+  /* Guided */
+  .guided{min-height:220px; display:flex; flex-direction:column; justify-content:center;}
+  .step-tag{
+    text-align:center; font-family:var(--display); letter-spacing:.16em;
+    text-transform:uppercase; font-size:.7rem; color:var(--gold-soft); margin-bottom:12px;
+  }
+  .vr{margin:0 auto; max-width:520px;}
+  .line{margin:6px 0; font-size:1.22rem;}
+  .line .mark{
+    font-family:var(--display); color:var(--gold); font-size:.86em;
+    margin-right:.5em; letter-spacing:.04em;
+  }
+  .line.resp{color:var(--cream);}
+  .line.vers{color:var(--faint); font-style:italic;}
+  .hail{
+    margin:16px auto 0; max-width:520px;
+    padding:14px 16px; border-left:2px solid var(--gold-dim);
+    background:rgba(215,180,91,.05); border-radius:0 10px 10px 0;
+  }
+  .hail .lbl{
+    font-family:var(--display); letter-spacing:.14em; text-transform:uppercase;
+    font-size:.66rem; color:var(--gold-soft); display:block; margin-bottom:5px;
+  }
+  .hail p{font-size:1.08rem;}
+  .rubric{
+    text-align:center; font-style:italic; color:var(--muted);
+    font-size:.9rem; margin-top:14px;
+  }
+  .rubric::before{content:"\271D"; color:var(--gold); margin-right:.4em;}
+  .collect{max-width:540px; margin:0 auto; text-align:center;}
+  .collect .lp{
+    font-family:var(--display); letter-spacing:.14em; text-transform:uppercase;
+    font-size:.7rem; color:var(--gold-soft); margin-bottom:10px;
+  }
+  .collect p{font-size:1.14rem;}
+  .intro-line{ text-align:center; font-size:1.22rem; max-width:520px; margin:0 auto; }
+  .amen-wrap{text-align:center;}
+  .amen-wrap .big{
+    font-family:var(--display); font-size:1.5rem; letter-spacing:.12em; color:var(--gold);
+  }
+  .amen-wrap p{color:var(--faint); font-style:italic; margin-top:10px; max-width:440px; margin-left:auto; margin-right:auto;}
+
+  /* dots + nav */
+  .dots{display:flex; gap:7px; justify-content:center; margin:20px 0 16px; flex-wrap:wrap;}
+  .dots span{width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.15); transition:.2s;}
+  .dots span.done{background:var(--gold-dim);}
+  .dots span.now{background:var(--gold); box-shadow:0 0 8px var(--gold); transform:scale(1.25);}
+  .nav{display:flex; gap:10px; justify-content:center;}
+  .btn{
+    font-family:var(--display); letter-spacing:.08em; text-transform:uppercase;
+    font-size:.8rem; cursor:pointer; border-radius:999px; padding:11px 22px;
+    border:1px solid var(--gold-dim); background:transparent; color:var(--cream); transition:.2s;
+  }
+  .btn:hover{border-color:var(--gold);}
+  .btn.primary{ background:var(--gold); color:#20160a; border-color:var(--gold); }
+  .btn.primary:hover{ background:#e6c46e; }
+  .btn:disabled{opacity:.35; cursor:default; border-color:rgba(255,255,255,.12);}
+
+  /* Full text */
+  .full{display:none;}
+  .full.show{display:block;}
+  .guided.hide{display:none;}
+  .full .fline{margin:9px 0; font-size:1.12rem; max-width:560px; margin-left:auto; margin-right:auto;}
+  .full .fline .mark{font-family:var(--display); color:var(--gold); font-size:.86em; margin-right:.5em;}
+  .full .fvers{color:var(--faint); font-style:italic;}
+  .full .fhail{
+    max-width:560px; margin:12px auto; padding:12px 16px; font-size:1.02rem;
+    border-left:2px solid var(--gold-dim); background:rgba(215,180,91,.05); border-radius:0 10px 10px 0;
+  }
+  .full .fcollect{max-width:560px; margin:16px auto 4px; text-align:center; font-size:1.06rem;}
+  .full .flp{font-family:var(--display); letter-spacing:.14em; text-transform:uppercase; font-size:.7rem; color:var(--gold-soft); margin-bottom:8px;}
+  .full .frub{text-align:center; font-style:italic; color:var(--muted); font-size:.9rem; margin:6px 0;}
+
+  .offer{
+    text-align:center; font-style:italic; color:var(--faint);
+    font-size:.94rem; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.06);
+  }
+
+  /* Settings */
+  details.settings{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:2px 4px;
+  }
+  details.settings > summary{
+    list-style:none; cursor:pointer; padding:14px 18px;
+    font-family:var(--display); letter-spacing:.1em; text-transform:uppercase; font-size:.78rem;
+    color:var(--gold-soft); display:flex; align-items:center; justify-content:space-between;
+  }
+  details.settings > summary::-webkit-details-marker{display:none;}
+  details.settings > summary .caret{transition:.2s; color:var(--muted);}
+  details.settings[open] > summary .caret{transform:rotate(180deg);}
+  .set-body{padding:4px 18px 18px;}
+  .set-row{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:12px 0; border-top:1px solid rgba(255,255,255,.06);
+  }
+  .set-row:first-child{border-top:0;}
+  .set-row .label{font-size:1.02rem;}
+  .set-row .hint{display:block; font-size:.82rem; color:var(--faint); font-style:italic; margin-top:2px;}
+  .times{display:flex; gap:8px; flex-wrap:wrap;}
+  .tbtn{
+    font-family:var(--serif); font-size:.9rem; color:var(--muted);
+    background:rgba(0,0,0,.2); border:1px solid var(--line); border-radius:10px;
+    padding:8px 12px; cursor:pointer; transition:.2s;
+  }
+  .tbtn.on{background:var(--gold); color:#20160a; border-color:var(--gold);}
+  .seg{display:flex; gap:4px; background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:10px; padding:3px;}
+  .seg button{
+    font-family:var(--serif); font-size:.86rem; color:var(--muted);
+    background:transparent; border:0; border-radius:8px; padding:7px 12px; cursor:pointer; transition:.2s;
+  }
+  .seg button.on{background:var(--gold); color:#20160a;}
+
+  /* toggle switch */
+  .sw{position:relative; width:46px; height:26px; flex:0 0 auto;}
+  .sw input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer;}
+  .sw .track{position:absolute; inset:0; background:rgba(255,255,255,.14); border-radius:999px; transition:.2s;}
+  .sw .knob{position:absolute; top:3px; left:3px; width:20px; height:20px; background:var(--cream); border-radius:50%; transition:.2s;}
+  .sw input:checked + .track{background:var(--gold);}
+  .sw input:checked + .track + .knob{transform:translateX(20px); background:#20160a;}
+
+  .bell-banner{
+    position:fixed; left:50%; top:18px; transform:translateX(-50%) translateY(-140%);
+    background:linear-gradient(180deg, #1a3462, #12274c);
+    border:1px solid var(--gold); border-radius:14px; padding:14px 22px;
+    box-shadow:0 16px 40px rgba(0,0,0,.5); z-index:50; text-align:center;
+    transition:transform .5s cubic-bezier(.2,.9,.3,1); max-width:90vw;
+  }
+  .bell-banner.show{transform:translateX(-50%) translateY(0);}
+  .bell-banner .ico{font-size:1.4rem; color:var(--gold);}
+  .bell-banner .t1{font-family:var(--display); letter-spacing:.08em; color:var(--cream); margin-top:2px;}
+  .bell-banner .t2{font-style:italic; color:var(--faint); font-size:.9rem; margin-top:2px;}
+
+  footer{text-align:center; color:var(--faint); font-size:.8rem; font-style:italic; padding-bottom:8px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="crest" aria-hidden="true">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="22" cy="22" r="16" opacity=".5"/>
+          <path d="M22 8 L22 36 M12 15 Q22 22 32 15 M14 27 Q22 22 30 27" opacity=".8"/>
+          <circle cx="22" cy="22" r="2.6" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <h1>Angelus Companion</h1>
+      <div class="subtitle">Pray the hours of the Incarnation</div>
+      <a class="backlink" href="https://augustineiacopelli.github.io/appaday/">&#8592; AppADay Portfolio</a>
+    </header>
+
+    <div class="status">
+      <div class="chip"><span>Next</span><b id="nextLabel">Noon</b><span id="nextIn" style="color:var(--faint)">in --</span></div>
+      <div class="chip"><span class="dot" id="chimeDot"></span><span id="chimeState">Chime off</span></div>
+    </div>
+
+    <div class="season" id="seasonNote"></div>
+
+    <section class="card">
+      <div class="form-head">
+        <div class="kicker" id="formKicker">The Angelus</div>
+        <h2 id="formLatin">Angelus Domini</h2>
+      </div>
+      <div class="rule"></div>
+
+      <div class="modes" role="tablist">
+        <button id="mGuided" class="active">Guided</button>
+        <button id="mFull">Full text</button>
+      </div>
+
+      <div class="guided" id="guided">
+        <div id="stepArea"></div>
+        <div class="dots" id="dots"></div>
+        <div class="nav">
+          <button class="btn" id="prevBtn">Back</button>
+          <button class="btn primary" id="nextBtn">Begin</button>
+        </div>
+      </div>
+
+      <div class="full" id="fullText"></div>
+
+      <div class="offer">It is a pious custom to offer the Angelus for the intentions of the Holy Father.</div>
+    </section>
+
+    <details class="settings">
+      <summary>Reminders &amp; settings <span class="caret">&#9662;</span></summary>
+      <div class="set-body">
+        <div class="set-row">
+          <div class="label">Chime reminders
+            <span class="hint">Rings at the times below while this page stays open.</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="remToggle"><span class="track"></span><span class="knob"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="label">Prayer times
+            <span class="hint">The three traditional hours of the Angelus.</span>
+          </div>
+          <div class="times">
+            <button class="tbtn on" data-h="6">6 AM</button>
+            <button class="tbtn on" data-h="12">Noon</button>
+            <button class="tbtn on" data-h="18">6 PM</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="label">Full bell peal
+            <span class="hint">Traditional 3&#8211;3&#8211;3&#8211;9 toll instead of a single call.</span>
+          </div>
+          <label class="sw"><input type="checkbox" id="pealToggle" checked><span class="track"></span><span class="knob"></span></label>
+        </div>
+        <div class="set-row">
+          <div class="label">Prayer form
+            <span class="hint">Auto follows the season: Regina Caeli in Eastertide.</span>
+          </div>
+          <div class="seg" id="formSeg">
+            <button data-f="auto" class="on">Auto</button>
+            <button data-f="angelus">Angelus</button>
+            <button data-f="regina">Regina Caeli</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <div class="label">Bell sound
+            <span class="hint">Tap once to enable audio, then hear a sample.</span>
+          </div>
+          <button class="btn" id="testChime">Test chime</button>
+        </div>
+      </div>
+    </details>
+
+    <footer>App 087 &middot; Spirituality &middot; AppADay</footer>
+  </div>
+
+  <div class="bell-banner" id="bellBanner" role="status">
+    <div class="ico">&#128276;</div>
+    <div class="t1" id="bellTitle">The Angelus bell</div>
+    <div class="t2">A moment to pause and pray.</div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  var HAILMARY = "Hail Mary, full of grace, the Lord is with thee; blessed art thou amongst women, and blessed is the fruit of thy womb, Jesus. Holy Mary, Mother of God, pray for us sinners, now and at the hour of our death. Amen.";
+
+  var PRAYERS = {
+    angelus: {
+      kicker: "The Angelus",
+      latin: "Angelus Domini",
+      steps: [
+        {v:"The Angel of the Lord declared unto Mary,", r:"And she conceived of the Holy Spirit.", hail:true, tag:"The Annunciation"},
+        {v:"Behold the handmaid of the Lord.", r:"Be it done unto me according to thy word.", hail:true, tag:"Her Fiat"},
+        {v:"And the Word was made Flesh,", r:"And dwelt among us.", hail:true, tag:"The Incarnation", rubric:"Here it is customary to bow the head."},
+        {v:"Pray for us, O holy Mother of God,", r:"That we may be made worthy of the promises of Christ.", hail:false, tag:"Intercession"},
+        {collect:true, text:"Pour forth, we beseech Thee, O Lord, Thy grace into our hearts; that we, to whom the Incarnation of Christ, Thy Son, was made known by the message of an angel, may by His Passion and Cross be brought to the glory of His Resurrection. Through the same Christ our Lord. Amen.", tag:"The Collect"}
+      ]
+    },
+    regina: {
+      kicker: "The Regina Caeli",
+      latin: "Regina Caeli",
+      steps: [
+        {v:"Queen of Heaven, rejoice, alleluia.", r:"For He whom thou didst merit to bear, alleluia.", hail:false, tag:"Paschal Joy"},
+        {v:"Hath risen, as He said, alleluia.", r:"Pray for us to God, alleluia.", hail:false, tag:"The Resurrection"},
+        {v:"Rejoice and be glad, O Virgin Mary, alleluia.", r:"For the Lord hath truly risen, alleluia.", hail:false, tag:"Her Gladness"},
+        {collect:true, text:"O God, who through the resurrection of Thy Son, our Lord Jesus Christ, didst vouchsafe to give joy to the world; grant, we beseech Thee, that through His Mother, the Virgin Mary, we may obtain the joys of everlasting life. Through the same Christ our Lord. Amen.", tag:"The Collect"}
+      ]
+    }
+  };
+
+  var TIMES = [6, 12, 18];
+  var TIME_NAMES = {6:"6 AM", 12:"Noon", 18:"6 PM"};
+
+  var DEFAULTS = { remOn:false, times:{h6:true,h12:true,h18:true}, fullPeal:true, form:"auto" };
+  var settings = loadSettings();
+
+  var el = {};
+  ["nextLabel","nextIn","chimeDot","chimeState","seasonNote","formKicker","formLatin",
+   "mGuided","mFull","guided","fullText","stepArea","dots","prevBtn","nextBtn",
+   "remToggle","pealToggle","formSeg","testChime","bellBanner","bellTitle"].forEach(function(id){
+    el[id] = document.getElementById(id);
+  });
+
+  var idx = 0;        // guided pointer: 0=intro, 1..N=steps, N+1=closing
+  var mode = "guided";
+
+  /* ---------- persistence ---------- */
+  function loadSettings(){
+    try{
+      var raw = localStorage.getItem("angelus-companion");
+      if(raw){
+        var s = JSON.parse(raw);
+        return {
+          remOn: !!s.remOn,
+          times: { h6: s.times ? !!s.times.h6 : true, h12: s.times ? !!s.times.h12 : true, h18: s.times ? !!s.times.h18 : true },
+          fullPeal: s.fullPeal !== false,
+          form: (s.form === "angelus" || s.form === "regina") ? s.form : "auto"
+        };
+      }
+    }catch(e){}
+    return JSON.parse(JSON.stringify(DEFAULTS));
+  }
+  function saveSettings(){
+    try{ localStorage.setItem("angelus-companion", JSON.stringify(settings)); }catch(e){}
+  }
+
+  /* ---------- season (Computus) ---------- */
+  function easter(year){
+    var a=year%19, b=Math.floor(year/100), c=year%100;
+    var d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+    var g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
+    var i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+    var m=Math.floor((a+11*h+22*l)/451);
+    var month=Math.floor((h+l-7*m+114)/31);
+    var day=((h+l-7*m+114)%31)+1;
+    return new Date(year, month-1, day);
+  }
+  function inEastertide(now){
+    var y = now.getFullYear();
+    var e = easter(y);
+    var pentecost = new Date(e.getTime());
+    pentecost.setDate(pentecost.getDate() + 49); // Pentecost Sunday
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var estart = new Date(e.getFullYear(), e.getMonth(), e.getDate());
+    var pend = new Date(pentecost.getFullYear(), pentecost.getMonth(), pentecost.getDate());
+    return today.getTime() >= estart.getTime() && today.getTime() <= pend.getTime();
+  }
+  function activeKey(){
+    if(settings.form === "angelus") return "angelus";
+    if(settings.form === "regina") return "regina";
+    return inEastertide(new Date()) ? "regina" : "angelus";
+  }
+
+  /* ---------- audio (Angelus bell) ---------- */
+  var actx = null, audioReady = false;
+  function unlockAudio(){
+    try{
+      if(!actx){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC) return;
+        actx = new AC();
+      }
+      if(actx.state === "suspended"){ actx.resume(); }
+      audioReady = true;
+    }catch(e){ audioReady = false; }
+    updateChimeState();
+  }
+  function strike(t){
+    if(!actx) return;
+    var o1 = actx.createOscillator();
+    var o2 = actx.createOscillator();
+    var g = actx.createGain();
+    o1.type = "sine"; o2.type = "sine";
+    o1.frequency.value = 523.25;      // C5 fundamental
+    o2.frequency.value = 523.25 * 2.76; // inharmonic partial for a bell timbre
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.32, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.7);
+    o1.connect(g); o2.connect(g); g.connect(actx.destination);
+    o1.start(t); o2.start(t);
+    o1.stop(t + 1.8); o2.stop(t + 1.8);
+  }
+  function ringPattern(groups){
+    if(!actx) return;
+    var t = actx.currentTime + 0.06;
+    for(var gi=0; gi<groups.length; gi++){
+      for(var s=0; s<groups[gi]; s++){ strike(t); t += 0.92; }
+      t += 0.95; // pause between groups
+    }
+  }
+  function ringPeal(){ ringPattern(settings.fullPeal ? [3,3,3,9] : [3,0,0,0]); }
+
+  /* ---------- guided rendering ---------- */
+  function currentPrayer(){ return PRAYERS[activeKey()]; }
+
+  function totalGuided(){ return currentPrayer().steps.length + 2; } // intro + steps + closing
+
+  function renderStep(){
+    var p = currentPrayer();
+    var n = totalGuided();
+    var area = el.stepArea;
+    var html = "";
+
+    if(idx === 0){
+      html += '<div class="step-tag">To begin</div>';
+      html += '<div class="intro-line">In the name of the Father, and of the Son,<br>and of the Holy Spirit. Amen.</div>';
+    } else if(idx === n - 1){
+      html += '<div class="amen-wrap"><div class="big">Amen.</div>';
+      html += '<p>The prayer is complete. May the Word made flesh dwell in your heart this day.</p></div>';
+    } else {
+      var st = p.steps[idx - 1];
+      html += '<div class="step-tag">' + esc(st.tag) + '</div>';
+      if(st.collect){
+        html += '<div class="collect"><div class="lp">Let us pray</div><p>' + esc(st.text) + '</p></div>';
+      } else {
+        html += '<div class="vr">';
+        html += '<div class="line vers"><span class="mark">V.</span>' + esc(st.v) + '</div>';
+        html += '<div class="line resp"><span class="mark">R.</span>' + esc(st.r) + '</div>';
+        html += '</div>';
+        if(st.rubric){ html += '<div class="rubric">' + esc(st.rubric) + '</div>'; }
+        if(st.hail){
+          html += '<div class="hail"><span class="lbl">Hail Mary</span><p>' + esc(HAILMARY) + '</p></div>';
+        }
+      }
+    }
+    area.innerHTML = html;
+
+    // dots
+    var dots = "";
+    for(var i=0; i<n; i++){
+      var cls = i < idx ? "done" : (i === idx ? "now" : "");
+      dots += '<span class="' + cls + '"></span>';
+    }
+    el.dots.innerHTML = dots;
+
+    // nav
+    el.prevBtn.disabled = (idx === 0);
+    if(idx === 0){ el.nextBtn.textContent = "Begin"; }
+    else if(idx === n - 1){ el.nextBtn.textContent = "Pray again"; }
+    else { el.nextBtn.textContent = "Next"; }
+  }
+
+  function renderFull(){
+    var p = currentPrayer();
+    var html = "";
+    html += '<div class="fline" style="text-align:center; font-style:italic; color:var(--faint)">In the name of the Father, and of the Son, and of the Holy Spirit. Amen.</div>';
+    for(var i=0; i<p.steps.length; i++){
+      var st = p.steps[i];
+      if(st.collect){
+        html += '<div class="fcollect"><div class="flp">Let us pray</div>' + esc(st.text) + '</div>';
+      } else {
+        html += '<div class="fline fvers"><span class="mark">V.</span>' + esc(st.v) + '</div>';
+        html += '<div class="fline"><span class="mark">R.</span>' + esc(st.r) + '</div>';
+        if(st.rubric){ html += '<div class="frub">' + esc(st.rubric) + '</div>'; }
+        if(st.hail){ html += '<div class="fhail">' + esc(HAILMARY) + '</div>'; }
+      }
+    }
+    el.fullText.innerHTML = html;
+  }
+
+  function esc(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function refreshForm(){
+    var p = currentPrayer();
+    el.formKicker.textContent = p.kicker;
+    el.formLatin.textContent = p.latin;
+    // season note
+    var auto = settings.form === "auto";
+    var eastertide = inEastertide(new Date());
+    if(activeKey() === "regina"){
+      el.seasonNote.textContent = auto
+        ? "Eastertide: the Regina Caeli is prayed in place of the Angelus."
+        : "Showing the Regina Caeli, prayed during the Easter season.";
+    } else {
+      el.seasonNote.textContent = (auto && !eastertide)
+        ? "Prayed throughout the year outside the Easter season."
+        : "Showing the Angelus.";
+    }
+    if(idx >= totalGuided()) idx = 0;
+    renderStep();
+    renderFull();
+  }
+
+  /* ---------- countdown + chime scheduler ---------- */
+  var lastChimeKey = null;
+
+  function nextTime(now){
+    var h = now.getHours(), m = now.getMinutes();
+    for(var i=0; i<TIMES.length; i++){
+      var T = TIMES[i];
+      if(h < T || (h === T && m === 0 && now.getSeconds() < 2)){
+        return { hour:T, tomorrow:false };
+      }
+    }
+    return { hour:TIMES[0], tomorrow:true };
+  }
+
+  function updateCountdown(now){
+    var nt = nextTime(now);
+    var target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), nt.hour, 0, 0, 0);
+    if(nt.tomorrow){ target.setDate(target.getDate() + 1); }
+    var diff = Math.max(0, target.getTime() - now.getTime());
+    var totalMin = Math.floor(diff / 60000);
+    var hh = Math.floor(totalMin / 60);
+    var mm = totalMin % 60;
+    el.nextLabel.textContent = TIME_NAMES[nt.hour];
+    var txt = "in ";
+    if(hh > 0){ txt += hh + "h "; }
+    txt += mm + "m";
+    if(hh === 0 && mm === 0){ txt = "now"; }
+    el.nextIn.textContent = txt;
+  }
+
+  function updateChimeState(){
+    var on = settings.remOn;
+    el.chimeDot.className = on ? "dot on" : "dot";
+    if(!on){
+      el.chimeState.textContent = "Chime off";
+    } else if(!audioReady){
+      el.chimeState.textContent = "Tap Test chime to enable sound";
+    } else {
+      el.chimeState.textContent = "Chime on";
+    }
+  }
+
+  function tick(){
+    var now = new Date();
+    updateCountdown(now);
+    if(settings.remOn && audioReady){
+      var h = now.getHours(), m = now.getMinutes();
+      if(m === 0 && (h === 6 || h === 12 || h === 18) && settings.times["h" + h]){
+        var key = now.toDateString() + "-" + h;
+        if(key !== lastChimeKey){
+          lastChimeKey = key;
+          ringPeal();
+          showBanner(h);
+        }
+      }
+    }
+  }
+
+  function showBanner(h){
+    var p = currentPrayer();
+    el.bellTitle.textContent = TIME_NAMES[h] + " \u2014 " + p.kicker;
+    el.bellBanner.classList.add("show");
+    setTimeout(function(){ el.bellBanner.classList.remove("show"); }, 9000);
+  }
+
+  /* ---------- wire UI ---------- */
+  function setMode(m){
+    mode = m;
+    if(m === "guided"){
+      el.mGuided.classList.add("active"); el.mFull.classList.remove("active");
+      el.guided.classList.remove("hide"); el.fullText.classList.remove("show");
+    } else {
+      el.mFull.classList.add("active"); el.mGuided.classList.remove("active");
+      el.guided.classList.add("hide"); el.fullText.classList.add("show");
+    }
+  }
+
+  function bind(){
+    el.mGuided.addEventListener("click", function(){ setMode("guided"); });
+    el.mFull.addEventListener("click", function(){ setMode("full"); });
+
+    el.nextBtn.addEventListener("click", function(){
+      var n = totalGuided();
+      if(idx === n - 1){ idx = 0; } else { idx++; }
+      renderStep();
+    });
+    el.prevBtn.addEventListener("click", function(){
+      if(idx > 0){ idx--; renderStep(); }
+    });
+
+    el.remToggle.addEventListener("change", function(){
+      settings.remOn = el.remToggle.checked;
+      if(settings.remOn && !audioReady){ unlockAudio(); }
+      saveSettings(); updateChimeState();
+    });
+    el.pealToggle.addEventListener("change", function(){
+      settings.fullPeal = el.pealToggle.checked; saveSettings();
+    });
+
+    var tbtns = document.querySelectorAll(".tbtn");
+    Array.prototype.forEach.call(tbtns, function(btn){
+      btn.addEventListener("click", function(){
+        var key = "h" + btn.getAttribute("data-h");
+        settings.times[key] = !settings.times[key];
+        btn.classList.toggle("on", settings.times[key]);
+        saveSettings();
+      });
+    });
+
+    var fbtns = el.formSeg.querySelectorAll("button");
+    Array.prototype.forEach.call(fbtns, function(btn){
+      btn.addEventListener("click", function(){
+        settings.form = btn.getAttribute("data-f");
+        Array.prototype.forEach.call(fbtns, function(b){ b.classList.remove("on"); });
+        btn.classList.add("on");
+        saveSettings();
+        refreshForm();
+      });
+    });
+
+    el.testChime.addEventListener("click", function(){
+      unlockAudio();
+      ringPattern([3, 0, 0, 0]);
+    });
+  }
+
+  function applySettingsToUI(){
+    el.remToggle.checked = settings.remOn;
+    el.pealToggle.checked = settings.fullPeal;
+    var tbtns = document.querySelectorAll(".tbtn");
+    Array.prototype.forEach.call(tbtns, function(btn){
+      var key = "h" + btn.getAttribute("data-h");
+      btn.classList.toggle("on", !!settings.times[key]);
+    });
+    var fbtns = el.formSeg.querySelectorAll("button");
+    Array.prototype.forEach.call(fbtns, function(btn){
+      btn.classList.toggle("on", btn.getAttribute("data-f") === settings.form);
+    });
+  }
+
+  function init(){
+    bind();
+    applySettingsToUI();
+    refreshForm();
+    updateChimeState();
+    setMode("guided");
+    tick();
+    setInterval(tick, 15000);
+  }
+
+  if(document.readyState === "loading"){
+    window.addEventListener("load", init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
